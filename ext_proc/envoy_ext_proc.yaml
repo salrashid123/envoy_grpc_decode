@@ -47,9 +47,6 @@ static_resources:
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor
               failure_mode_allow: false
-              async_mode: false              
-              request_attributes:
-              - user
               processing_mode:
                 request_header_mode: "SEND"
                 response_header_mode: "SKIP"
