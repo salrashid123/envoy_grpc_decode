@@ -34,6 +34,7 @@ cd ext_proc/
 go run filter.go
 
 ## Start envoy
+### docker cp `docker create envoyproxy/envoy-dev:latest`:/usr/local/bin/envoy .
 envoy -c envoy_ext_proc.yaml -l debug
 ```
 
