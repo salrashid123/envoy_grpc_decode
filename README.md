@@ -23,9 +23,31 @@ Basically, the external filter will we will load the proto descriptors for the m
 
 ---
 
-In this demo, the client sends a message "alice", and the grpc Server is supposed to respond back with "hi alice".  However with the external processing filter in the middle, the message sent is altered to instead read "bob" so the response is "hi bob"
+In this demo, given the proto
 
-First start the external filter and envoy
+```proto
+syntax = "proto3";
+
+package echo;
+
+service EchoServer {
+  rpc SayHelloUnary (EchoRequest) returns (EchoReply) {}
+  rpc SayHelloServerStream(EchoRequest) returns (stream EchoReply) {}
+}
+
+message EchoRequest {
+  string name = 1;
+}
+
+message EchoReply {
+  string message = 1;
+}
+```
+
+if the client sends `SayHelloUnary` using  `EchoRequest` with `name=alice`, the filter will alter the payload and send `name=bob` to the grpcServer
+
+if the client sends`SayHelloServerStream` with `name=carol`, the gRPC server will stream two responses back with `message="hi carol"`.  However the filter will alter the final grpc message to the client as `message="hi sally"`
+
 
 ```bash
 cd ext_proc/
@@ -48,10 +70,16 @@ cd grpc_server/
 go run greeter_server/grpc_server.go --grpcport :50051 
 
 # test client directly to server
-# go run greeter_client/grpc_client.go --host localhost:50051
+go run greeter_client/grpc_client.go --host localhost:50051
+    2022/10/19 17:37:46 hi alice
+    2022/10/19 17:37:46 hi carol
+    2022/10/19 17:37:46 hi carol
 
 # test client via envoy
 go run greeter_client/grpc_client.go --host localhost:8081
+    2022/10/19 17:37:56 hi bob
+    2022/10/19 17:37:57 hi sally
+    2022/10/19 17:37:57 hi sally
 ```
 
 

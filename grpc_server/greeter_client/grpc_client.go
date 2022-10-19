@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"time"
@@ -66,22 +67,22 @@ func main() {
 	log.Printf("%s", r.Message)
 
 	// // /// ***** SERVER Streaming
-	// stream, err := c.SayHelloServerStream(ctx, &echo.EchoRequest{Name: "alice"})
-	// if err != nil {
-	// 	log.Fatalf("SayHelloStream(_) = _, %v", err)
-	// }
-	// for {
-	// 	m, err := stream.Recv()
-	// 	if err == io.EOF {
-	// 		//t := stream.Trailer()
-	// 		//log.Println("Stream Trailer: ", t)
-	// 		break
-	// 	}
-	// 	if err != nil {
-	// 		log.Fatalf("SayHelloStream(_) = _, %v", err)
-	// 	}
+	stream, err := c.SayHelloServerStream(ctx, &echo.EchoRequest{Name: "carol"})
+	if err != nil {
+		log.Fatalf("SayHelloStream(_) = _, %v", err)
+	}
+	for {
+		m, err := stream.Recv()
+		if err == io.EOF {
+			//t := stream.Trailer()
+			//log.Println("Stream Trailer: ", t)
+			break
+		}
+		if err != nil {
+			log.Fatalf("SayHelloStream(_) = _, %v", err)
+		}
 
-	// 	log.Printf("[%s]", m.Message)
-	// }
+		log.Printf("%s", m.Message)
+	}
 
 }

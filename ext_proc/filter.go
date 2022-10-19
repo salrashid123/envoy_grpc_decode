@@ -137,57 +137,68 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 					log.Printf("Error Unmarshal: %v\n", err)
 					return err
 				}
-				fmt.Printf("Decode echo.EchoRequest payload [%s]\n", pmr.Get(msg).String())
+				fmt.Printf("Decode echo.EchoRequest payload %s\n", pmr.Get(msg).String())
 
-				//  alter the inbouund message
+				//  alter the inbound message if name=alice
 
-				a, err := anypb.New(echoRequestMessageType.New().Interface())
-				if err != nil {
-					log.Printf("Error Unmarshal: %v\n", err)
-					return err
-				}
+				if pmr.Get(msg).String() == "alice" {
+					a, err := anypb.New(echoRequestMessageType.New().Interface())
+					if err != nil {
+						log.Printf("Error Unmarshal: %v\n", err)
+						return err
+					}
 
-				pmr2 := echoRequestMessageType.New()
-				inner_name := echoRequestMessageDescriptor.Fields().ByName("name")
-				pmr2.Set(inner_name, protoreflect.ValueOfString("bob"))
+					pmr2 := echoRequestMessageType.New()
+					inner_name := echoRequestMessageDescriptor.Fields().ByName("name")
+					pmr2.Set(inner_name, protoreflect.ValueOfString("bob"))
 
-				in, err := proto.Marshal(pmr2.Interface())
-				if err != nil {
-					log.Printf("Error NewEncoder: %v\n", err)
-					return err
-				}
-				fmt.Printf("Encoded EchoRequest using protojson and anypb %v\n", hex.EncodeToString(a.Value))
+					in, err := proto.Marshal(pmr2.Interface())
+					if err != nil {
+						log.Printf("Error NewEncoder: %v\n", err)
+						return err
+					}
+					fmt.Printf("Encoded EchoRequest using protojson and anypb %v\n", hex.EncodeToString(a.Value))
 
-				var out bytes.Buffer
-				enc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
-				if err != nil {
-					log.Printf("Error NewEncoder: %v\n", err)
-					return err
-				}
-				err = enc.Encode(in)
-				if err != nil {
-					log.Printf("Error NewEncoder.Encode: %v\n", err)
-					return err
-				}
+					var out bytes.Buffer
+					enc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
+					if err != nil {
+						log.Printf("Error NewEncoder: %v\n", err)
+						return err
+					}
+					err = enc.Encode(in)
+					if err != nil {
+						log.Printf("Error NewEncoder.Encode: %v\n", err)
+						return err
+					}
 
-				resp = &pb.ProcessingResponse{
-					Response: &pb.ProcessingResponse_RequestBody{
-						RequestBody: &pb.BodyResponse{
-							Response: &pb.CommonResponse{
-								BodyMutation: &pb.BodyMutation{
-									Mutation: &pb.BodyMutation_Body{
-										Body: out.Bytes(),
+					resp = &pb.ProcessingResponse{
+						Response: &pb.ProcessingResponse_RequestBody{
+							RequestBody: &pb.BodyResponse{
+								Response: &pb.CommonResponse{
+									BodyMutation: &pb.BodyMutation{
+										Mutation: &pb.BodyMutation_Body{
+											Body: out.Bytes(),
+										},
 									},
 								},
 							},
 						},
-					},
 
-					ModeOverride: &v3.ProcessingMode{
-						ResponseHeaderMode: v3.ProcessingMode_SEND,
-						ResponseBodyMode:   v3.ProcessingMode_NONE,
-					},
+						ModeOverride: &v3.ProcessingMode{
+							ResponseHeaderMode: v3.ProcessingMode_SEND,
+							ResponseBodyMode:   v3.ProcessingMode_NONE,
+						},
+					}
+				} else {
+					resp = &pb.ProcessingResponse{
+						Response: &pb.ProcessingResponse_RequestBody{},
+						ModeOverride: &v3.ProcessingMode{
+							ResponseHeaderMode: v3.ProcessingMode_SEND,
+							ResponseBodyMode:   v3.ProcessingMode_NONE,
+						},
+					}
 				}
+
 			}
 
 		case *pb.ProcessingRequest_ResponseHeaders:
@@ -212,6 +223,7 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 			if b.ResponseBody.EndOfStream {
 				enc := lencode.NewDecoder(bytes.NewBuffer(b.ResponseBody.Body), lencode.SeparatorOpt([]byte{0}))
 
+				var bytesToSend []byte
 				for {
 					respMessageBytes, err := enc.Decode()
 
@@ -240,6 +252,53 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 						return err
 					}
 					fmt.Printf("Decoded echo.EchoReply message [%s]\n", pmr.Get(msg).String())
+
+					// if the response is "hi carol, change it to 'hi sally"
+
+					if pmr.Get(msg).String() == "hi carol" {
+						pmr2 := echoResponseMessageType.New()
+						inner_name := echoResponseMessageDescriptor.Fields().ByName("message")
+						pmr2.Set(inner_name, protoreflect.ValueOfString("hi sally"))
+
+						in, err := proto.Marshal(pmr2.Interface())
+						if err != nil {
+							log.Printf("Error NewEncoder: %v\n", err)
+							return err
+						}
+
+						var out bytes.Buffer
+						lenc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
+						if err != nil {
+							log.Printf("Error NewEncoder: %v\n", err)
+							return err
+						}
+						err = lenc.Encode(in)
+						if err != nil {
+							log.Printf("Error NewEncoder.Encode: %v\n", err)
+							return err
+						}
+
+						bytesToSend = append(bytesToSend, out.Bytes()...)
+					}
+
+				}
+
+				if len(bytesToSend) == 0 {
+					resp = &pb.ProcessingResponse{}
+				} else {
+					resp = &pb.ProcessingResponse{
+						Response: &pb.ProcessingResponse_ResponseBody{
+							ResponseBody: &pb.BodyResponse{
+								Response: &pb.CommonResponse{
+									BodyMutation: &pb.BodyMutation{
+										Mutation: &pb.BodyMutation_Body{
+											Body: bytesToSend,
+										},
+									},
+								},
+							},
+						},
+					}
 				}
 			}
 

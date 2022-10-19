@@ -50,15 +50,15 @@ func (s *server) SayHelloUnary(ctx context.Context, in *echo.EchoRequest) (*echo
 	}
 	log.Printf("Metadata Headers %v", headers)
 
-	return &echo.EchoReply{Message: fmt.Sprintf("hi [%s]", in.Name)}, nil
+	return &echo.EchoReply{Message: fmt.Sprintf("hi %s", in.Name)}, nil
 
 }
 
 func (s *server) SayHelloServerStream(in *echo.EchoRequest, stream echo.EchoServer_SayHelloServerStreamServer) error {
 
 	log.Println("Got stream:  -->  ")
-	stream.Send(&echo.EchoReply{Message: "Hello " + in.Name})
-	stream.Send(&echo.EchoReply{Message: "hello again  " + in.Name})
+	stream.Send(&echo.EchoReply{Message: "hi " + in.Name})
+	stream.Send(&echo.EchoReply{Message: "hi " + in.Name})
 
 	return nil
 }
