@@ -216,15 +216,15 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 						return err
 					}
 
-					er := &echo.EchoRequest{}
+					er := &echo.EchoReply{}
 
 					err = proto.Unmarshal(respMessageBytes, er)
 					if err != nil {
 						log.Fatal("unmarshaling error: ", err)
 					}
 
-					if er.Name == "hi carol" {
-						fmt.Printf("Decoded echo.EchoReply message [%s]\n", er.Name)
+					if er.Message == "hi carol" {
+						fmt.Printf("Decoded echo.EchoReply message [%s]\n", er.Message)
 						var out bytes.Buffer
 						enc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
 						if err != nil {
@@ -232,8 +232,8 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 							return err
 						}
 
-						enew := &echo.EchoRequest{
-							Name: "hi sally",
+						enew := &echo.EchoReply{
+							Message: "hi sally",
 						}
 
 						bb, err := proto.Marshal(enew)
