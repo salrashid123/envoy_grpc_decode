@@ -1,5 +1,5 @@
 
-## Filtering gRPC Messages using Envoy
+## Decoding gRPC Messages using Envoy
 
 Envoy [External Processing Filter](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ext_proc/v3/processing_mode.proto) which decodes and alters gRPC messages.
 
