@@ -3,33 +3,26 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
-	//"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/salrashid123/envoy_grpc_decode/echo"
 
 	v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/ext_proc/v3"
 	pb "github.com/envoyproxy/go-control-plane/envoy/service/ext_proc/v3"
 	"github.com/psanford/lencode"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protodesc"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
-	"google.golang.org/protobuf/types/descriptorpb"
-	"google.golang.org/protobuf/types/dynamicpb"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
@@ -115,49 +108,25 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 			if b.RequestBody.EndOfStream {
 
 				dec := lencode.NewDecoder(bytes.NewBuffer(b.RequestBody.Body), lencode.SeparatorOpt([]byte{0}))
+
 				reqMessageBytes, err := dec.Decode()
+
 				if err != nil {
-					log.Printf("Error Encode: %v\n", err)
-					return err
-				}
-
-				echoRequestMessageType, err := protoregistry.GlobalTypes.FindMessageByName("echo.EchoRequest")
-				if err != nil {
-					log.Printf("Error FindMessageByName: %v\n", err)
-					return err
-				}
-
-				pmr := echoRequestMessageType.New()
-
-				echoRequestMessageDescriptor := echoRequestMessageType.Descriptor()
-
-				msg := echoRequestMessageDescriptor.Fields().ByName("name")
-				err = proto.Unmarshal(reqMessageBytes, pmr.Interface())
-				if err != nil {
-					log.Printf("Error Unmarshal: %v\n", err)
-					return err
-				}
-				fmt.Printf("Decode echo.EchoRequest payload %s\n", pmr.Get(msg).String())
-
-				//  alter the inbound message if name=alice
-
-				if pmr.Get(msg).String() == "alice" {
-					a, err := anypb.New(echoRequestMessageType.New().Interface())
-					if err != nil {
-						log.Printf("Error Unmarshal: %v\n", err)
-						return err
+					if err == io.EOF {
+						break
 					}
+					log.Fatalf("could not Decode  %v", err)
+					return err
+				}
+				er := &echo.EchoRequest{}
 
-					pmr2 := echoRequestMessageType.New()
-					inner_name := echoRequestMessageDescriptor.Fields().ByName("name")
-					pmr2.Set(inner_name, protoreflect.ValueOfString("bob"))
+				err = proto.Unmarshal(reqMessageBytes, er)
+				if err != nil {
+					log.Fatal("unmarshaling error: ", err)
+				}
 
-					in, err := proto.Marshal(pmr2.Interface())
-					if err != nil {
-						log.Printf("Error NewEncoder: %v\n", err)
-						return err
-					}
-					fmt.Printf("Encoded EchoRequest using protojson and anypb %v\n", hex.EncodeToString(a.Value))
+				if er.Name == "alice" {
+					fmt.Printf("Decode echo.EchoRequest payload ---->  %v\n", string(er.Name))
 
 					var out bytes.Buffer
 					enc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
@@ -165,7 +134,18 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 						log.Printf("Error NewEncoder: %v\n", err)
 						return err
 					}
-					err = enc.Encode(in)
+
+					enew := &echo.EchoRequest{
+						Name: "bob",
+					}
+
+					bb, err := proto.Marshal(enew)
+					if err != nil {
+						log.Printf("Error Marshalling response: %v\n", err)
+						return err
+					}
+
+					err = enc.Encode(bb)
 					if err != nil {
 						log.Printf("Error NewEncoder.Encode: %v\n", err)
 						return err
@@ -189,6 +169,7 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 							ResponseBodyMode:   v3.ProcessingMode_NONE,
 						},
 					}
+
 				} else {
 					resp = &pb.ProcessingResponse{
 						Response: &pb.ProcessingResponse_RequestBody{},
@@ -235,50 +216,39 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 						return err
 					}
 
-					echoResponseMessageType, err := protoregistry.GlobalTypes.FindMessageByName("echo.EchoReply")
+					er := &echo.EchoRequest{}
+
+					err = proto.Unmarshal(respMessageBytes, er)
 					if err != nil {
-						log.Printf("Error FindMessageByName: %v\n", err)
-						return err
+						log.Fatal("unmarshaling error: ", err)
 					}
 
-					pmr := echoResponseMessageType.New()
-
-					echoResponseMessageDescriptor := echoResponseMessageType.Descriptor()
-
-					msg := echoResponseMessageDescriptor.Fields().ByName("message")
-					err = proto.Unmarshal(respMessageBytes, pmr.Interface())
-					if err != nil {
-						log.Printf("Error Unmarshal: %v\n", err)
-						return err
-					}
-					fmt.Printf("Decoded echo.EchoReply message [%s]\n", pmr.Get(msg).String())
-
-					// if the response is "hi carol, change it to 'hi sally"
-
-					if pmr.Get(msg).String() == "hi carol" {
-						pmr2 := echoResponseMessageType.New()
-						inner_name := echoResponseMessageDescriptor.Fields().ByName("message")
-						pmr2.Set(inner_name, protoreflect.ValueOfString("hi sally"))
-
-						in, err := proto.Marshal(pmr2.Interface())
-						if err != nil {
-							log.Printf("Error NewEncoder: %v\n", err)
-							return err
-						}
-
+					if er.Name == "hi carol" {
+						fmt.Printf("Decoded echo.EchoReply message [%s]\n", er.Name)
 						var out bytes.Buffer
-						lenc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
+						enc := lencode.NewEncoder(&out, lencode.SeparatorOpt([]byte{0}))
 						if err != nil {
 							log.Printf("Error NewEncoder: %v\n", err)
 							return err
 						}
-						err = lenc.Encode(in)
+
+						enew := &echo.EchoRequest{
+							Name: "hi sally",
+						}
+
+						bb, err := proto.Marshal(enew)
+						if err != nil {
+							log.Printf("Error Marshalling response: %v\n", err)
+							return err
+						}
+
+						err = enc.Encode(bb)
 						if err != nil {
 							log.Printf("Error NewEncoder.Encode: %v\n", err)
 							return err
 						}
-
 						bytesToSend = append(bytesToSend, out.Bytes()...)
+
 					}
 
 				}
@@ -314,47 +284,6 @@ func (s *server) Process(srv pb.ExternalProcessor_ProcessServer) error {
 func main() {
 
 	flag.Parse()
-
-	pbFiles := []string{
-		"../grpc_server/echo/echo.proto.pb",
-	}
-
-	for _, fileName := range pbFiles {
-
-		protoFile, err := ioutil.ReadFile(fileName)
-		if err != nil {
-			panic(err)
-		}
-
-		fileDescriptors := &descriptorpb.FileDescriptorSet{}
-		err = proto.Unmarshal(protoFile, fileDescriptors)
-		if err != nil {
-			panic(err)
-		}
-		for _, pb := range fileDescriptors.GetFile() {
-			var fdr protoreflect.FileDescriptor
-			fdr, err = protodesc.NewFile(pb, protoregistry.GlobalFiles)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("Loading package %s\n", fdr.Package().Name())
-			err = protoregistry.GlobalFiles.RegisterFile(fdr)
-			if err != nil {
-				panic(err)
-			}
-			for _, m := range pb.MessageType {
-
-				fmt.Printf("  Registering MessageType: %s\n", *m.Name)
-				md := fdr.Messages().ByName(protoreflect.Name(*m.Name))
-				mdType := dynamicpb.NewMessageType(md)
-
-				err = protoregistry.GlobalTypes.RegisterMessage(mdType)
-				if err != nil {
-					panic(err)
-				}
-			}
-		}
-	}
 
 	lis, err := net.Listen("tcp", *grpcport)
 	if err != nil {

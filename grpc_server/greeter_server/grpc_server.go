@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/salrashid123/envoy_wasm_grpc_payload/echo"
+	"github.com/salrashid123/envoy_grpc_decode/echo"
 
 	"google.golang.org/grpc/codes"
 
@@ -18,7 +18,7 @@ import (
 )
 
 /*
-protoc --go_out=.    -go_opt=paths=source_relative  --descriptor_set_out=echo/echo.proto.pb   --go-grpc_out=. --go-grpc_opt=paths=source_relative     echo/echo.proto
+protoc --go_out=.    --go_opt=paths=source_relative  --descriptor_set_out=echo/echo.proto.pb   --go-grpc_out=. --go-grpc_opt=paths=source_relative     echo/echo.proto
 */
 var (
 	grpcport = flag.String("grpcport", ":50051", "grpcport")

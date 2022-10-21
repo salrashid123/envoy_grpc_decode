@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/salrashid123/envoy_wasm_grpc_payload/echo"
+	"github.com/salrashid123/envoy_grpc_decode/echo"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

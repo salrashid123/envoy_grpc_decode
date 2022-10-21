@@ -16,10 +16,8 @@ This sample builds ontop of these articles:
 * [gRPC Unary requests the hard way: using protorefelect, dynamicpb and wire-encoding to send messages](https://blog.salrashid.dev/articles/2022/grpc_wireformat/)
 
 
-Basically, the external filter will we will load the proto descriptors for the message type, then decode the grpc wire encoded message body,  construct a new message, encode the altered message back to wireformat  then finally send that to the upstream.
+Basically, the external filter decode the grpc wireformat message into byte messages using (`"github.com/psanford/lencode"`), then `proto.Unmarshal` that into an actual gRPC message we can inspect.
 
-
->> note, i've only tested this with unary messages (though streaming would be possible as well)
 
 ---
 

@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1
 	github.com/psanford/lencode v0.3.0
+	github.com/salrashid123/envoy_grpc_decode/echo v0.0.0
 	google.golang.org/grpc v1.46.2
 )
 
@@ -19,4 +20,4 @@ require (
 	google.golang.org/protobuf v1.27.1
 )
 
-replace github.com/salrashid123/envoy_wasm_grpc_payload/echo => ../grpc_server/echo
+replace github.com/salrashid123/envoy_grpc_decode/echo => ../grpc_server/echo

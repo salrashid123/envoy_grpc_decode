@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package echo;
-option go_package = "github.com/salrashid123/envoy_wasm_grpc_payload/echo";
+option go_package = "github.com/salrashid123/envoy_grpc_decode/echo";
 
 service EchoServer {
   rpc SayHelloUnary (EchoRequest) returns (EchoReply) {}
