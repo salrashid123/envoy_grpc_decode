@@ -81,6 +81,64 @@ go run greeter_client/grpc_client.go --host localhost:8081
 ```
 
 
+#### Using envoy.filters.http.grpc_field_extraction
+
+The example proxy has an additional filter which extracts values from the grpc request itself:
+[envoy.filters.http.grpc_field_extraction](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/grpc_field_extraction/v3/config.proto#grpc-field-extraction-proto)
+
+
+The specific configuration below reads in the descriptor and sets envoy metadata for the `echoRequest` method
+
+```yaml
+          - name: envoy.filters.http.grpc_field_extraction
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_field_extraction.v3.GrpcFieldExtractionConfig
+              descriptor_set: 
+                filename: "../grpc_server/echo/echo.proto.pb"
+              extractions_by_method:
+                echo.EchoServer.SayHelloUnary:
+                  request_field_extractions:
+                    name: {}
+```
+
+envoy logs would show this even before the external processor is called
+
+```log
+[2024-11-15 12:31:39.604][326918][debug][http] [source/common/http/conn_manager_impl.cc:1160] [Tags: "ConnectionId":"1","StreamId":"13715990017498254296"] request headers complete (end_stream=false):
+':method', 'POST'
+':scheme', 'https'
+':path', '/echo.EchoServer/SayHelloUnary'
+':authority', 'grpc.domain.com'
+'content-type', 'application/grpc'
+'user-agent', 'grpc-go/1.33.2'
+'te', 'trailers'
+'grpc-timeout', '997267u'
+
+[2024-11-15 12:31:39.604][326918][debug][filter] [source/extensions/filters/http/grpc_field_extraction/filter.cc:122] [Tags: "ConnectionId":"1","StreamId":"13715990017498254296"] decodeData: data size=12 end_stream=true
+[2024-11-15 12:31:39.604][326918][info][misc] [source/extensions/filters/http/grpc_field_extraction/message_converter/message_converter.cc:154] 12 + 0
+[2024-11-15 12:31:39.604][326918][info][misc] [source/extensions/filters/http/grpc_field_extraction/message_converter/message_converter.cc:32] Checking buffer limits: actual 12 > limit 268435456?
+[2024-11-15 12:31:39.604][326918][info][misc] [source/extensions/filters/http/grpc_field_extraction/message_converter/message_converter.cc:154] 12 + 0
+[2024-11-15 12:31:39.604][326918][debug][misc] [./source/extensions/filters/http/grpc_field_extraction/message_converter/stream_message.h:22] owned len(owned_bytes_)=7
+[2024-11-15 12:31:39.604][326918][info][misc] [source/extensions/filters/http/grpc_field_extraction/message_converter/message_converter.cc:62] len(parsing_buffer_)=0
+[2024-11-15 12:31:39.604][326918][debug][misc] [source/extensions/filters/http/grpc_field_extraction/extractor_impl.cc:47] extracted the following resource values from the name field: list_value {
+  values {
+    string_value: "alice"
+  }
+}
+
+[2024-11-15 12:31:39.604][326918][debug][filter] [source/extensions/filters/http/grpc_field_extraction/filter.cc:221] [Tags: "ConnectionId":"1","StreamId":"13715990017498254296"] injected dynamic metadata `envoy.filters.http.grpc_field_extraction` with `fields {
+  key: "name"
+  value {
+    list_value {
+      values {
+        string_value: "alice"
+      }
+    }
+  }
+}
+`
+```
+
 ### Appendix
 
 TODO: see if we can create a wasm filter to do the same (which isn't that easy since we need to decode the wireformat)

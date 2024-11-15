@@ -43,6 +43,20 @@ static_resources:
                   cluster: grpc_upstream_svc
 
           http_filters:
+
+
+
+          - name: envoy.filters.http.grpc_field_extraction
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_field_extraction.v3.GrpcFieldExtractionConfig
+              descriptor_set: 
+                filename: "../grpc_server/echo/echo.proto.pb"
+              extractions_by_method:
+                echo.EchoServer.SayHelloUnary:
+                  request_field_extractions:
+                    name: {}
+
+
           - name: envoy.filters.http.ext_proc
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor
