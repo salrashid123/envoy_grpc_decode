@@ -18,7 +18,7 @@ import (
 
 var (
 	address    = flag.String("host", "localhost:8081", "host:port of gRPC server")
-	tlsCACert  = flag.String("cacert", "../certs/tls-ca.crt", "tls CA Certificate")
+	tlsCACert  = flag.String("cacert", "../certs/root-ca.crt", "tls CA Certificate")
 	serverName = flag.String("servername", "grpc.domain.com", "CACert for server")
 )
 

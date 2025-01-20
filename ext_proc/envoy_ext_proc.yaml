@@ -45,6 +45,15 @@ static_resources:
           http_filters:
 
 
+          - name: envoy.filters.http.proto_message_extraction
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.proto_message_extraction.v3.ProtoMessageExtractionConfig
+              data_source: 
+                filename: "../grpc_server/echo/echo.proto.pb"
+              extraction_by_method:
+                echo.EchoServer.SayHelloUnary:
+                  request_extraction_by_field:
+                    name: "EXTRACT"
 
           - name: envoy.filters.http.grpc_field_extraction
             typed_config:
@@ -107,7 +116,7 @@ static_resources:
             match_subject_alt_names:
               exact: "grpc.domain.com"
             trusted_ca:
-              filename: "../certs/tls-ca-chain.crt"        
+              filename: "../certs/root-ca.crt"        
 
   - name: ext_proc_cluster
     type: STATIC
@@ -141,4 +150,4 @@ static_resources:
             match_subject_alt_names:
               exact: "server.domain.com"
             trusted_ca:
-              filename: "../certs/tls-ca-chain.crt"          
+              filename: "../certs/root-ca.crt"          
